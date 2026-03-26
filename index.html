@@ -25,7 +25,7 @@ button {
 
 <div id="app">
   <h1>遺伝情報翻訳ゲーム</h1>
-  <button id="mode1Btn">mRNAから</button>
+  <button onclick="selectMode1()">mRNAから</button>
 </div>
 
 <script>
@@ -59,6 +59,12 @@ function toFullWidth(str) {
   });
 }
 
+function selectMode1() {
+  mrna = generateMRNA();
+  correctAA = translate(mrna);
+  showDescription();
+}
+
 // ===== 問題生成（モード選択時）=====
 function generateMRNA() {
   var dummy = 2 + Math.floor(Math.random()4);
@@ -85,11 +91,6 @@ function translate(seq) {
 }
 
 // ===== 画面 =====
-document.getElementById("mode1Btn").onclick = function(){
-  mrna = generateMRNA();
-  correctAA = translate(mrna);
-  showDescription();
-};
 
 function showDescription() {
   app.innerHTML =
