@@ -2,214 +2,159 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>遺伝情報翻訳ゲーム（モード1）</title>
+<title>遺伝情報翻訳ゲーム（超安全版・モード1）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
-  font-family: "Meiryo", sans-serif;
-  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  padding: 10px;
 }
 button {
+  font-size: 16px;
+  padding: 8px 12px;
   margin: 4px;
-  padding: 6px 10px;
 }
 .sequence {
-  font-size: 20px;
+  font-size: 18px;
+  word-break: break-all;
   margin: 10px 0;
 }
 </style>
 </head>
 <body>
 
-<div id="screen"></div>
+<div id="app">
+  <h1>遺伝情報翻訳ゲーム</h1>
+  <button id="mode1Btn">mRNAから</button>
+</div>
 
 <script>
 // ===== 遺伝暗号表（RNA）=====
-const geneticCode = {
-  UUU:"フェニルアラニン", UUC:"フェニルアラニン",
-  UUA:"ロイシン", UUG:"ロイシン",
-  UCU:"セリン", UCC:"セリン", UCA:"セリン", UCG:"セリン",
-  UAU:"チロシン", UAC:"チロシン",
-  UGU:"システイン", UGC:"システイン",
-  UGG:"トリプトファン",
-  CUU:"ロイシン", CUC:"ロイシン", CUA:"ロイシン", CUG:"ロイシン",
-  CCU:"プロリン", CCC:"プロリン", CCA:"プロリン", CCG:"プロリン",
-  CAU:"ヒスチジン", CAC:"ヒスチジン",
-  CAA:"グルタミン", CAG:"グルタミン",
-  CGU:"アルギニン", CGC:"アルギニン", CGA:"アルギニン", CGG:"アルギニン",
-  AUU:"イソロイシン", AUC:"イソロイシン", AUA:"イソロイシン",
-  AUG:"メチオニン",
-  ACU:"トレオニン", ACC:"トレオニン", ACA:"トレオニン", ACG:"トレオニン",
-  AAU:"アスパラギン", AAC:"アスパラギン",
-  AAA:"リシン", AAG:"リシン",
-  AGU:"セリン", AGC:"セリン",
-  AGA:"アルギニン", AGG:"アルギニン",
-  GUU:"バリン", GUC:"バリン", GUA:"バリン", GUG:"バリン",
-  GCU:"アラニン", GCC:"アラニン", GCA:"アラニン", GCG:"アラニン",
-  GAU:"アスパラギン酸", GAC:"アスパラギン酸",
-  GAA:"グルタミン酸", GAG:"グルタミン酸",
-  GGU:"グリシン", GGC:"グリシン", GGA:"グリシン", GGG:"グリシン",
-  UAA:"終止コドン", UAG:"終止コドン", UGA:"終止コドン"
+var geneticCode = {
+  "AUG":"メチオニン",
+  "UUU":"フェニルアラニン","UUC":"フェニルアラニン",
+  "UUA":"ロイシン","UUG":"ロイシン",
+  "UAA":"終止コドン","UAG":"終止コドン","UGA":"終止コドン"
 };
 
-const bases = ["A","U","G","C"];
+// ===== 変数 =====
+var mrna = "";
+var correctAA = [];
+var userAA = [];
+var startTime = 0;
+var step = 0;
 
-let mrna = "";
-let correctAA = [];
-let userAA = [];
-let startTime = 0;
-let index = 0;
+// ===== DOM =====
+var app = document.getElementById("app");
 
-// ===== 画面描画 =====
-const screen = document.getElementById("screen");
+// ===== ユーティリティ =====
+function randomBase() {
+  var b = ["A","U","G","C"];
+  return b[Math.floor(Math.random()4)];
+}
 
-// ===== タイトル =====
-function showTitle() {
-  screen.innerHTML = 
-    <h1>遺伝情報翻訳ゲーム</h1>
-    <button onclick="prepareMode1()">mRNAから</button>
-  ;
+function toFullWidth(str) {
+  return str.replace(/[A-Z]/g, function(s){
+    return String.fromCharCode(s.charCodeAt(0) + 0xFEE0);
+  });
 }
 
 // ===== 問題生成（モード選択時）=====
-function prepareMode1() {
-  mrna = generateMRNA();
-  correctAA = translateMRNA(mrna);
-  showDescription();
-}
-
-// ===== 説明 =====
-function showDescription() {
-  screen.innerHTML = 
-    <p>
-    mRNAが表示されます。そのmRNAを翻訳したとき、1つ目のアミノ酸から順に選択してアミノ酸配列を作りましょう。<br>
-    途中で終止コドンが入った場合は終止コドンを選んでください。<br>
-    途中で間違えても最後の解答まで不正解だと表示されません。<br>
-    「スタート」のボタンを押してから自分の解答の確定までのタイムが測定されます。
-    </p>
-    <button onclick="startGame()">スタート</button>
-  ;
-}
-
-// ===== ゲーム開始 =====
-function startGame() {
-  userAA = [];
-  index = 0;
-  startTime = performance.now();
-  showGame();
-}
-
-// ===== ゲーム画面 =====
-function showGame() {
-  let aaText = userAA.join("-") + (userAA.length ? "-" : "");
-  screen.innerHTML = 
-    <div class="sequence">5'-${toFullWidth(mrna)}-3'</div>
-    <p>選択中のアミノ酸配列：</p>
-    <p>${aaText}</p>
-    <p>${index+1}番目のアミノ酸を選んでください。</p>
-    <div id="buttons"></div>
-  ;
-
-  const btns = document.getElementById("buttons");
-  const correct = correctAA[index];
-  const choices = shuffle([correct, ...randomAminoAcids(3, correct)]);
-
-  choices.forEach(a => {
-    btns.innerHTML += <button onclick="selectAA('${a}')">${a}</button>;
-  });
-
-  if (index > 0) {
-    btns.innerHTML += 
-      <br>
-      <button onclick="restart()">1番目からやり直す</button>
-      <button onclick="back()">1つ前に戻る</button>
-      <button onclick="finish()">終止コドン</button>
-    ;
-  }
-}
-
-// ===== 操作 =====
-function selectAA(a) {
-  userAA.push(a);
-  index++;
-  showGame();
-}
-
-function back() {
-  userAA.pop();
-  index--;
-  showGame();
-}
-
-function restart() {
-  userAA = [];
-  index = 0;
-  startTime = performance.now();
-  showGame();
-}
-
-function finish() {
-  showResult();
-}
-
-// ===== 結果 =====
-function showResult() {
-  const correct = userAA.join() === correctAA.join();
-  if (correct) {
-    const t = (performance.now() - startTime) / 1000;
-    screen.innerHTML = 
-      <h2>正解！</h2>
-      <p>タイム：${Math.floor(t/60)}分 ${(t%60).toFixed(2)}秒</p>
-      <button onclick="showTitle()">モード選択画面に戻る</button>
-    ;
-  } else {
-    screen.innerHTML = 
-      <h2>ざんねん、不正解…</h2>
-      <button onclick="restart()">はじめからやり直す</button><br>
-      <small>計測タイムは継続します。</small><br>
-      <button onclick="showTitle()">モード選択画面に戻る</button>
-    ;
-  }
-}
-
-// ===== 補助関数 =====
 function generateMRNA() {
-  const dummyLen = Math.floor(Math.random()4)+2;
-  let seq = "";
-  for (let i=0;i<dummyLen;i++) seq += bases[Math.floor(Math.random()4)];
+  var dummy = 2 + Math.floor(Math.random()4);
+  var seq = "";
+  for (var i=0;i<dummy;i++) seq += randomBase();
   seq += "AUG";
-  const total = Math.floor(Math.random()5)+26;
-  while (seq.length < total) seq += bases[Math.floor(Math.random()4)];
+  var total = 26 + Math.floor(Math.random()*5);
+  while (seq.length < total) seq += randomBase();
   return seq;
 }
 
-function translateMRNA(seq) {
-  const start = seq.indexOf("AUG");
-  let result = [];
-  for (let i=start;i+2<seq.length;i+=3) {
-    const codon = seq.substr(i,3);
-    const aa = geneticCode[codon];
-    if (!aa) break;
-    result.push(aa);
-    if (aa === "終止コドン") break;
+function translate(seq) {
+  var start = seq.indexOf("AUG");
+  var result = [];
+  for (var i=start;i+2<seq.length;i+=3) {
+    var codon = seq.substr(i,3);
+    if (geneticCode[codon]) {
+      result.push(geneticCode[codon]);
+    } else {
+      result.push("不明");
+    }
   }
   return result;
 }
 
-function randomAminoAcids(n, exclude) {
-  const aas = [...new Set(Object.values(geneticCode))].filter(a=>a!==exclude);
-  return shuffle(aas).slice(0,n);
+// ===== 画面 =====
+document.getElementById("mode1Btn").onclick = function(){
+  mrna = generateMRNA();
+  correctAA = translate(mrna);
+  showDescription();
+};
+
+function showDescription() {
+  app.innerHTML =
+    "<p>mRNAが表示されます。そのmRNAを翻訳したとき、1つ目のアミノ酸から順に選択してアミノ酸配列を作りましょう。<br>" +
+    "途中で終止コドンが入った場合は終止コドンを選んでください。<br>" +
+    "途中で間違えても最後の解答まで不正解だと表示されません。<br>" +
+    "「スタート」のボタンを押してから自分の解答の確定までのタイムが測定されます。</p>" +
+    "<button id='startBtn'>スタート</button>";
+
+  document.getElementById("startBtn").onclick = startGame;
 }
 
-function shuffle(arr) {
-  return arr.sort(()=>Math.random()-0.5);
+function startGame() {
+  userAA = [];
+  step = 0;
+  startTime = Date.now();
+  showGame();
 }
 
-function toFullWidth(str) {
-  return str.replace(/[A-Z]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+function showGame() {
+  var html = "";
+  html += "<div class='sequence'>5'-" + toFullWidth(mrna) + "-3'</div>";
+  html += "<p>選択中のアミノ酸配列：</p>";
+  html += "<p>" + userAA.join("-") + "</p>";
+  html += "<p>" + (step+1) + "番目のアミノ酸を選んでください。</p>";
+
+  // 超安全：必ず存在する候補のみ
+  var choices = ["メチオニン","フェニルアラニン","ロイシン","終止コドン"];
+
+  for (var i=0;i<choices.length;i++) {
+    html += "<button onclick=\"selectAA('" + choices[i] + "')\">" + choices[i] + "</button>";
+  }
+
+  html += "<br><br><button onclick='finish()'>解答を確定する</button>";
+
+  app.innerHTML = html;
 }
 
-// ===== 初期表示 =====
-showTitle();
+function selectAA(a) {
+  userAA.push(a);
+  step++;
+  showGame();
+}
+
+function finish() {
+  var ok = true;
+  for (var i=0;i<userAA.length;i++) {
+    if (userAA[i] !== correctAA[i]) {
+      ok = false;
+      break;
+    }
+  }
+  var time = (Date.now() - startTime)/1000;
+  if (ok) {
+    app.innerHTML =
+      "<h2>正解！</h2>" +
+      "<p>タイム：" + time.toFixed(2) + " 秒</p>" +
+      "<button onclick='location.reload()'>最初に戻る</button>";
+  } else {
+    app.innerHTML =
+      "<h2>ざんねん、不正解…</h2>" +
+      "<button onclick='location.reload()'>最初に戻る</button>";
+  }
+}
 </script>
+
 </body>
 </html>
