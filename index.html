@@ -35,6 +35,15 @@ button:hover {
   margin-bottom: 20px;
 }
 
+/* ボタン横並び用の共通クラス */
+.button-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap; /* スマホで折り返し */
+  margin-top: 10px;
+}
+
 /* 配列表示 */
 .sequence {
   font-size: 20px;
@@ -129,6 +138,27 @@ button:hover {
   }
 
 }
+
+/* ===== 各画面を中央配置するための共通設定 ===== */
+/* 非表示の画面は必ず消す（最優先） */
+.hidden {
+  display: none !important;
+}
+
+/* 表示中の画面だけを中央配置（Flexbox） */
+#screen-title:not(.hidden),
+#screen-desc:not(.hidden),
+#screen-game:not(.hidden),
+#screen-check:not(.hidden),
+#screen-result:not(.hidden) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;     /* 左右中央 */
+  justify-content: center; /* 上下中央 */
+  min-height: 100vh;       /* 画面全体を使う */
+}
+
+
 </style>
 </head>
 <body>
@@ -138,10 +168,13 @@ button:hover {
   <p class="title-sub">
     どの配列から翻訳するか、下から選んでください。
   </p>
-  <button onclick="selectMode(1)">mRNAから</button>
-  <button onclick="selectMode(2)">遺伝子配列から</button>
-  <button onclick="selectMode(3)">鋳型鎖から</button>
-  <button onclick="selectMode(4)">2本鎖から</button>
+
+  <div class="button-row">
+    <button onclick="selectMode(1)">mRNAから</button>
+    <button onclick="selectMode(2)">遺伝子配列から</button>
+    <button onclick="selectMode(3)">鋳型鎖から</button>
+    <button onclick="selectMode(4)">2本鎖から</button>
+  </div>
 </div>
 
 <div id="screen-desc" class="hidden">
@@ -169,17 +202,23 @@ button:hover {
 <div id="screen-game" class="hidden">
   <div class="sequence" id="mrna"></div>
   <div id="prompt"></div>
-  <div id="choices"></div>
+  <!-- ★ アミノ酸選択（上段） -->
+  <div class="button-row" id="aminoButtons"></div>
+  <!-- ★ 操作系（下段） -->
+  <div class="button-row" id="controlButtons"></div>
   <div class="answer" id="currentAnswer"></div>
 </div>
 
 <div id="screen-check" class="hidden">
   <h2>解答の確認</h2>
   <div class="sequence" id="checkSeq"></div>
-  <div class="answer" id="checkAnswer"></div>
+  <div class="confirm-answer" id="checkAnswer"></div>
   <p>この解答でいいですか？</p>
-  <button onclick="judge()">はい</button>
-  <button onclick="backToLast()">いいえ</button>
+  <div class="button-row">
+    <button onclick="judge()">はい</button>
+    <button onclick="backToLast()">いいえ</button>
+  </div>
+
 </div>
 
 <div id="screen-result" class="hidden"></div>
@@ -431,47 +470,77 @@ function startGame(){
 }
 
 function showChoices(){
-  let prompt = document.getElementById("prompt");
-  let choices = document.getElementById("choices");
-  prompt.innerText = (index+1)+"番目のアミノ酸を選んでください。";
-  choices.innerHTML="";
-  let correct = codonTable[codons[index]];
-  let options = Object.values(codonTable)
-    .filter(v=>v!=="終止コドン");
-  options = options.sort(()=>0.5-Math.random()).slice(0,3);
-  if(!options.includes(correct)) options[0]=correct;
-  options = options.sort(()=>0.5-Math.random());
-  options.forEach(a=>{
-    let b=document.createElement("button");
-    b.innerText=a;
-    b.onclick=()=>selectAA(a);
-    choices.appendChild(b);
+  const prompt = document.getElementById("prompt");
+  const aminoButtons = document.getElementById("aminoButtons");
+  const controlButtons = document.getElementById("controlButtons");
+
+  prompt.innerText = (index + 1) + "番目のアミノ酸を選んでください。";
+
+  aminoButtons.innerHTML = "";
+  controlButtons.innerHTML = "";
+
+  const correct = codonTable[codons[index]];
+
+  // ===== 上段：アミノ酸選択肢 =====
+
+  let options;
+
+  if (correct === "終止コドン") {
+    // ★ 正解が終止コドンのとき ★
+    // ダミーのアミノ酸だけを用意（終止コドンは入れない）
+    options = Object.values(codonTable)
+      .filter(v => v !== "終止コドン")
+      .sort(() => 0.5 - Math.random())
+      .slice(0, 3);
+
+  } else {
+    // ★ 通常時（正解がアミノ酸） ★
+    options = Object.values(codonTable)
+      .filter(v => v !== "終止コドン");
+
+    options = options.sort(() => 0.5 - Math.random()).slice(0, 3);
+    if (!options.includes(correct)) options[0] = correct;
+    options = options.sort(() => 0.5 - Math.random());
+  }
+
+  // 上段にアミノ酸ボタンを配置
+  options.forEach(a => {
+    const b = document.createElement("button");
+    b.innerText = a;
+    b.onclick = () => selectAA(a);
+    aminoButtons.appendChild(b);
   });
-  if(index>0){
-    let back=document.createElement("button");
-    back.innerText="1つ前に戻る";
-    back.onclick=()=>{
+
+  // ===== 下段：操作ボタン =====
+  if (index > 0) {
+
+    const back = document.createElement("button");
+    back.innerText = "1つ前に戻る";
+    back.onclick = () => {
       answers.pop();
       index--;
       updateAnswer();
       showChoices();
     };
-    choices.appendChild(back);
-    let reset=document.createElement("button");
-    reset.innerText="1番目からやり直す";
-    reset.onclick=()=>{
-      answers=[];
-      index=0;
+    controlButtons.appendChild(back);
+
+    const reset = document.createElement("button");
+    reset.innerText = "1番目からやり直す";
+    reset.onclick = () => {
+      answers = [];
+      index = 0;
       updateAnswer();
-      startTime=Date.now();
+      startTime = Date.now();
       showChoices();
     };
-    choices.appendChild(reset);
+    controlButtons.appendChild(reset);
+
+    // ★ 2つ目以降でのみ「終止コドン」を表示
+    const stop = document.createElement("button");
+    stop.innerText = "終止コドン";
+    stop.onclick = () => selectAA("終止コドン");
+    controlButtons.appendChild(stop);
   }
-  let stop=document.createElement("button");
-  stop.innerText="終止コドン";
-  stop.onclick=()=>selectAA("終止コドン");
-  choices.appendChild(stop);
 }
 
 function selectAA(a){
@@ -531,75 +600,77 @@ function judge(){
   res.classList.remove("hidden");
 
   // 正解配列を作る
-  let correct=[];
-  for(let c of codons){
+  let correct = [];
+  for (let c of codons) {
     let aa = codonTable[c];
     correct.push(aa);
-    if(aa==="終止コドン") break;
+    if (aa === "終止コドン") break;
   }
 
   let ok = answers.join() === correct.join();
 
-  if(ok){
-    let t=(Date.now()-startTime)/1000;
-    let m=Math.floor(t/60);
-    let s=(t%60).toFixed(2).padStart(5,"0");
+  if (ok) {
+    let t = (Date.now() - startTime) / 1000;
+    let m = Math.floor(t / 60);
+    let s = (t % 60).toFixed(2).padStart(5, "0");
 
     res.innerHTML = `
       <div class="correct-text">正解！</div>
-      <div class="clear-time">${m}:${s}</div>`;
+      <div class="clear-time">${m}:${s}</div>
+    `;
+
   } else {
     res.innerHTML = `
-    <div class="wrong-text">ざんねん、不正解…</div>
-    <p class="notice">
-    ※「はじめからやり直す」「1つ前に戻る」を選んでも
-    タイム計測は継続されます。
-    </p>`;
+      <div class="wrong-text">ざんねん、不正解…</div>
+      <p class="notice">
+        ※「はじめからやり直す」「1つ前に戻る」を選んでも
+        タイム計測は継続されます。
+      </p>
+    `;
 
-    // はじめから
-    let retry=document.createElement("button");
-    retry.innerText="はじめからやり直す";
-    
+    // ★ 横並びにするための行を作る
+    const row = document.createElement("div");
+    row.className = "button-row";
+
     // はじめからやり直す
+    const retry = document.createElement("button");
+    retry.innerText = "はじめからやり直す";
     retry.onclick = () => {
       res.classList.add("hidden");
       document.getElementById("screen-game").classList.remove("hidden");
 
-      // 状態を完全にリセット
       answers = [];
       index = 0;
-
-      // 表示もリセット（空のアミノ酸配列）
       updateAnswer();
-      showChoices(); // 「1番目のアミノ酸を選んでください。」
+      showChoices();
     };
-    res.appendChild(retry);
 
     // 1つ前に戻る
-    let back=document.createElement("button");
-    back.innerText="1つ前に戻る";
-    
-    // 1つ前に戻る
+    const back = document.createElement("button");
+    back.innerText = "1つ前に戻る";
     back.onclick = () => {
       res.classList.add("hidden");
       document.getElementById("screen-game").classList.remove("hidden");
 
-      // 直前のアミノ酸を取り消す
       answers.pop();
       index--;
-
-      // 状態に合わせて表示を更新
-      updateAnswer(); // 例：メチオニン－バリン－
-      showChoices();  // 例：「3番目のアミノ酸を選んでください。」
+      updateAnswer();
+      showChoices();
     };
-    res.appendChild(back);
-  }
 
-  // モード選択へ
-  let btn=document.createElement("button");
-  btn.innerText="モード選択画面に戻る";
-  btn.onclick=()=>location.reload();
-  res.appendChild(btn);
+    // モード選択画面へ
+    const btn = document.createElement("button");
+    btn.innerText = "モード選択画面に戻る";
+    btn.onclick = () => location.reload();
+
+    // ★ すべて row に入れる
+    row.appendChild(retry);
+    row.appendChild(back);
+    row.appendChild(btn);
+
+    // ★ 最後に1回だけ res に追加
+    res.appendChild(row);
+  }
 }
 
 function backToLast(){
