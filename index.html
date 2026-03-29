@@ -28,6 +28,13 @@ button:hover {
   background-color: #43a047; /* 濃い緑 */
 }
 
+/* タイトル下の補足説明 */
+.title-sub {
+  font-size: 16px;
+  color: #2e7d32;     /* 落ち着いた緑 */
+  margin-bottom: 20px;
+}
+
 /* 配列表示 */
 .sequence {
   font-size: 20px;
@@ -57,10 +64,12 @@ button:hover {
     font-weight: bold;
 }
 
-/* 不正解メッセージ */
+/* 不正解メインメッセージ（少し大きく） */
 .wrong-text {
-    color: #1976d2;     /* 青 */
-    font-weight: bold;
+  color: #1976d2;     /* 青 */
+  font-size: 24px;    /* ← 少し大きく */
+  font-weight: bold;
+  margin-bottom: 10px;
 }
 
 /* 正解タイム表示用 */
@@ -73,6 +82,7 @@ button:hover {
 
 /* 注意書き */
 .notice {
+  font-size: 14px;    /* ← 小さく */
   color: #c62828;
   margin-top: 10px;
 }
@@ -125,6 +135,9 @@ button:hover {
 
 <div id="screen-title">
   <h1>遺伝情報翻訳ゲーム</h1>
+  <p class="title-sub">
+    どの配列から翻訳するか、下から選んでください。
+  </p>
   <button onclick="selectMode(1)">mRNAから</button>
   <button onclick="selectMode(2)">遺伝子配列から</button>
   <button onclick="selectMode(3)">鋳型鎖から</button>
