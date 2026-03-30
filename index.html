@@ -614,10 +614,25 @@ function judge(){
     let m = Math.floor(t / 60);
     let s = (t % 60).toFixed(2).padStart(5, "0");
 
+    // 正解表示とタイム
     res.innerHTML = `
       <div class="correct-text">正解！</div>
       <div class="clear-time">${m}:${s}</div>
     `;
+
+    // ★ ボタンを横並びで配置する行を追加
+    const row = document.createElement("div");
+    row.className = "button-row";
+
+    // モード選択画面に戻るボタン
+    const btn = document.createElement("button");
+    btn.innerText = "モード選択画面に戻る";
+    btn.onclick = () => location.reload();
+
+    row.appendChild(btn);
+
+    // 結果画面に追加
+    res.appendChild(row);
 
   } else {
     res.innerHTML = `
